@@ -26,9 +26,19 @@
 #include "../cpc/messages.h"
 
 //#define USE_ASM 1
+#define AVERAGE(z, x) ((((z) & 0xF7DEF7DE) >> 1) + (((x) & 0xF7DEF7DE) >> 1))
+
+
+SDL_Rect normal_surface = { 0, 0, 320, 240 };
+SDL_Rect zoom1_surface = { 33, 24, 256, 192 };
+SDL_Rect game_surface;
+SDL_Surface *scaled_screen;
 
 static SDL_Surface *screen;
+static SDL_Surface *sdl_screen;
 extern SDL_Surface *menuSurface;
+
+extern int gui_Zoom;
 BOOL fullscreen = FALSE;	//FIXME
 BOOL toggleFullscreenLater = FALSE;
 int scale = 1;
@@ -48,10 +58,13 @@ void sdl_InitialiseJoysticks(void);
 void sdl_SetDisplay(int Width, int Height, int Depth, BOOL wantfullscreen) {
 
 	fullscreen = wantfullscreen;
+	game_surface = normal_surface;
 	fprintf(stderr, Messages[106],
 		Width, Height, Depth);
 	if ( fullscreen ) mode |= SDL_FULLSCREEN;
 	else mode &= ~SDL_FULLSCREEN;
+	sdl_screen = SDL_CreateRGBSurface(SDL_HWSURFACE, 320, 240, 16, 0, 0, 0, 0);
+	scaled_screen = SDL_CreateRGBSurface(SDL_HWSURFACE, 320, 240, 16, 0, 0, 0, 0);
 	screen = SDL_SetVideoMode(Width, Height, Depth, mode);
 	menuSurface = SDL_CreateRGBSurface(SDL_SWSURFACE, 320, 240, 16, 0, 0, 0, 0);
 
@@ -164,10 +177,10 @@ int sdl_CheckDisplay(void) {
 }
 
 void sdl_GetGraphicsBufferInfo(GRAPHICS_BUFFER_INFO *pBufferInfo) {
-	pBufferInfo->pSurface = screen->pixels;
-	pBufferInfo->Width = screen->w;
-	pBufferInfo->Height = screen->h;
-	pBufferInfo->Pitch = screen->pitch;
+	pBufferInfo->pSurface = sdl_screen->pixels;
+	pBufferInfo->Width = sdl_screen->w;
+	pBufferInfo->Height = sdl_screen->h;
+	pBufferInfo->Pitch = sdl_screen->pitch;
 
 	//printf("get buffer info\r\n");
 	//printf("W: %d H: %d P: %d\r\n",pBufferInfo->Width, pBufferInfo->Height,
@@ -607,7 +620,111 @@ void sdl_DoubleGraphicsBuffer(void) {
 void sdl_SwapGraphicsBuffers(void) {
 	if ( scale == 2 ) sdl_DoubleGraphicsBuffer();
 	//SDL_UpdateRects(screen,1,&screen->clip_rect);
+	//SDL_SoftStretch(scaled_screen, NULL, screen, NULL);
+	if(gui_Zoom == 0) {
+		remove_scanlines(sdl_screen, 1);
+		SDL_BlitSurface(sdl_screen, NULL, screen, NULL);
+	}
+	else if(gui_Zoom == 1) {
+		SDL_BlitSurface(sdl_screen, &game_surface, scaled_screen, NULL);
+		// erase scanlines as they scaled badly
+		remove_scanlines(scaled_screen, 0);
+		upscale_256xXXX_to_320x240(screen->pixels, scaled_screen->pixels, 256, 192, 96);
+		//SDL_BlitSurface(scaled_screen, NULL, screen, &game_surface);
+	}
 	SDL_Flip( screen );
+}
+
+Uint32 getpixel(SDL_Surface *surface, int x, int y)
+{
+    int bpp = surface->format->BytesPerPixel;
+    /* Here p is the address to the pixel we want to retrieve */
+    Uint8 *p = (Uint8 *)surface->pixels + y * surface->pitch + x * bpp;
+
+switch (bpp)
+{
+    case 1:
+        return *p;
+        break;
+
+    case 2:
+        return *(Uint16 *)p;
+        break;
+
+    case 3:
+        if (SDL_BYTEORDER == SDL_BIG_ENDIAN)
+            return p[0] << 16 | p[1] << 8 | p[2];
+        else
+            return p[0] | p[1] << 8 | p[2] << 16;
+            break;
+
+        case 4:
+            return *(Uint32 *)p;
+            break;
+
+        default:
+            return 0;       /* shouldn't happen, but avoids warnings */
+      }
+}
+
+
+void remove_scanlines(SDL_Surface* surface, int offset) {
+
+    uint32_t y, x;
+	int bpp = surface->format->BytesPerPixel;
+    SDL_LockSurface(surface);
+
+	for(y = 0; y < surface->h; y++) {
+		for(x = offset; x < surface->w; x = x+2) {
+			Uint8 *p = (Uint8 *)surface->pixels + y * surface->pitch + x * bpp;
+			*(Uint16*) p = getpixel(surface, x+1, y);
+		}
+	}
+
+    SDL_UnlockSurface(surface);
+}
+
+void upscale_256xXXX_to_320x240(uint32_t* restrict dst, uint32_t* restrict src, uint_fast16_t width, uint_fast16_t height, uint32_t midh)
+{
+    uint32_t Eh = 0;
+    uint32_t source;
+    uint32_t dh = 0;
+    uint32_t y, x;
+
+    for (y = 0; y < 240; y++)
+    {
+        source = dh * width / 2;
+
+        for (x = 0; x < 320/10; x++)
+        {
+            register uint32_t ab, cd, ef, gh;
+
+            __builtin_prefetch(dst + 4, 1);
+            __builtin_prefetch(src + source + 4, 0);
+
+            ab = src[source] & 0xF7DEF7DE;
+            cd = src[source + 1] & 0xF7DEF7DE;
+            ef = src[source + 2] & 0xF7DEF7DE;
+            gh = src[source + 3] & 0xF7DEF7DE;
+
+            if(Eh >= midh) {
+                ab = AVERAGE(ab, src[source + width/2]) & 0xF7DEF7DE; // to prevent overflow
+                cd = AVERAGE(cd, src[source + width/2 + 1]) & 0xF7DEF7DE; // to prevent overflow
+                ef = AVERAGE(ef, src[source + width/2 + 2]) & 0xF7DEF7DE; // to prevent overflow
+                gh = AVERAGE(gh, src[source + width/2 + 3]) & 0xF7DEF7DE; // to prevent overflow
+            }
+
+            *dst++ = ab;
+            *dst++  = ((ab >> 17) + ((cd & 0xFFFF) >> 1)) + (cd << 16);
+            *dst++  = (cd >> 16) + (ef << 16);
+            *dst++  = (ef >> 16) + (((ef & 0xFFFF0000) >> 1) + ((gh & 0xFFFF) << 15));
+            *dst++  = gh;
+
+            source += 4;
+
+        }
+        Eh += height; if(Eh >= 240) { Eh -= 240; dh++; }
+    }
 }
 
 /* Some comments about throttling on Linux/Unix:

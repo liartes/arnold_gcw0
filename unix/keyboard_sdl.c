@@ -58,6 +58,10 @@ extern char* rom_path;
 char save_path[512];
 const static char SAVE_DIRECTORY[] = "/mnt/SDCARD/Roms/GX4000/.gx4000/saves/";
 
+extern SDL_Rect normal_surface;
+extern SDL_Rect zoom1_surface;
+extern SDL_Rect game_surface;
+extern SDL_Surface *scaled_screen;
 /*
  * MENU ELEMENTS
  */
@@ -206,13 +210,16 @@ int gui_Zoom = 0;
 int gui_Frameskip = 0;
 int gui_CRTC = 0;
 int gui_RealSpeed = 1;
+int gui_Joy = 0;
 
+
+static const char *gui_JoyInput[2] = {"J1", "J2"};
 
 static const char *gui_YesNo[2] = {"no", "yes"};
 
 static const char *CRTC_Types[5] = { "CRTC 0", "CRTC 1", "CRTC 2", "CRTC 3",
 	"CRTC 4" };
-static const char *zoom_Values[4] = { "x1", "x1.1", "x1.2", "x1.3" };
+static const char *zoom_Values[4] = { "Normal", "Zoom" };
 
 void menu_Exit()
 {
@@ -236,11 +243,28 @@ void menu_ChangeFrameskip() {
 }
 
 void menu_ChangeRatio() {
+	// normal: fullscreen 320*240
+	if(gui_Zoom == 0) {
+		game_surface = normal_surface;
+		if (scaled_screen != NULL)
+			free(scaled_screen);
+		scaled_screen = SDL_CreateRGBSurface(SDL_HWSURFACE, 320, 240, 16, 0, 0, 0, 0);
+	}
+	// zoom 1 : cropped 280*210 (avenger, abu simbel)
+	if(gui_Zoom == 1) {
+		game_surface = zoom1_surface;
+		if (scaled_screen != NULL)
+			free(scaled_screen);
+		scaled_screen = SDL_CreateRGBSurface(SDL_HWSURFACE, 256, 192, 16, 0, 0, 0, 0);
+	}
 }
 
 void menu_ChangeCRTC() {
 	CurrentCRTCType = gui_CRTC;
 	CPC_SetCRTCType(CurrentCRTCType);
+}
+
+void menu_ChangeJoyInput() {
 }
 
 typedef struct {
@@ -264,14 +288,15 @@ typedef struct {
 // Exit
 
 MENUITEM gui_MainMenuItems[] = {
-//	{(const char *)"Zoom level: ", &gui_Zoom, 3, (const char **)&zoom_Values, &menu_ChangeRatio},
+	{(const char *)"Aspect: ", &gui_Zoom, 1, (const char **)&zoom_Values, &menu_ChangeRatio},
+	{(const char *)"Input for: ", &gui_Joy, 1, (const char **)&gui_JoyInput, &menu_ChangeJoyInput},
 	{(const char *)"Frameskip: ", &gui_Frameskip, 5, 0, &menu_ChangeFrameskip},
 	{(const char *)"CRTC choice: ", &gui_CRTC, 4, (const char **)&CRTC_Types, &menu_ChangeCRTC},
 	{(const char *)"Realspeed: ", &gui_RealSpeed, 1, (const char **)&gui_YesNo, &menu_ChangeRealSpeed},
 	{(const char *)"Exit", 0, 0, 0, &menu_Exit}
 };
 
-MENU gui_MainMenu = { 4, 0, (MENUITEM *)&gui_MainMenuItems };
+MENU gui_MainMenu = { 5, 0, (MENUITEM *)&gui_MainMenuItems };
 
 #define color16(red, green, blue) ((red << 11) | (green << 5) | blue)
 
@@ -505,22 +530,52 @@ void HandleKey(SDL_KeyboardEvent *theEvent) {
 		if (theEvent->type == SDL_KEYDOWN) {
 			switch (keycode) {
 			case SDLK_LCTRL:
-				CPC_SetKey(CPC_KEY_JOY_FIRE1);
+				if(gui_Joy == 0) {
+					CPC_SetKey(CPC_KEY_JOY_FIRE1);
+				}
+				else {
+					CPC_SetKey(CPC_JOY1_FIRE1);
+				}
 				break;
 			case SDLK_LALT:
-				CPC_SetKey(CPC_KEY_JOY_FIRE2);
+				if(gui_Joy == 0) {
+					CPC_SetKey(CPC_KEY_JOY_FIRE2);
+				}
+				else {
+					CPC_SetKey(CPC_JOY1_FIRE2);
+				}
 				break;
 			case SDLK_UP:
-				CPC_SetKey(CPC_KEY_JOY_UP);
+				if(gui_Joy == 0) {
+					CPC_SetKey(CPC_KEY_JOY_UP);
+				}
+				else {
+					CPC_SetKey(CPC_JOY1_UP);
+				}
 				break;
 			case SDLK_DOWN:
-				CPC_SetKey(CPC_KEY_JOY_DOWN);
+				if(gui_Joy == 0) {
+					CPC_SetKey(CPC_KEY_JOY_DOWN);
+				}
+				else {
+					CPC_SetKey(CPC_JOY1_DOWN);
+				}
 				break;
 			case SDLK_LEFT:
-				CPC_SetKey(CPC_KEY_JOY_LEFT);
+				if(gui_Joy == 0) {
+					CPC_SetKey(CPC_KEY_JOY_LEFT);
+				}
+				else {
+					CPC_SetKey(CPC_JOY1_LEFT);
+				}
 				break;
 			case SDLK_RIGHT:
-				CPC_SetKey(CPC_KEY_JOY_RIGHT);
+				if(gui_Joy == 0) {
+					CPC_SetKey(CPC_KEY_JOY_RIGHT);
+				}
+				else {
+					CPC_SetKey(CPC_JOY1_RIGHT);
+				}
 				break;
 			case SDLK_RETURN:
 				CPC_SetKey(CPC_KEY_P);
@@ -539,22 +594,52 @@ void HandleKey(SDL_KeyboardEvent *theEvent) {
 		} else if (theEvent->type == SDL_KEYUP) {
 			switch (keycode) {
 			case SDLK_LCTRL:
-				CPC_ClearKey(CPC_KEY_JOY_FIRE1);
+				if(gui_Joy == 0){
+					CPC_ClearKey(CPC_KEY_JOY_FIRE1);
+				}
+				else {
+					CPC_ClearKey(CPC_JOY1_FIRE1);
+				}
 				break;
 			case SDLK_LALT:
+				if(gui_Joy == 0){
 				CPC_ClearKey(CPC_KEY_JOY_FIRE2);
+				}
+				else {
+					CPC_ClearKey(CPC_JOY1_FIRE2);
+				}
 				break;
 			case SDLK_UP:
+				if(gui_Joy == 0){
 				CPC_ClearKey(CPC_KEY_JOY_UP);
+				}
+				else {
+					CPC_ClearKey(CPC_JOY1_UP);
+				}
 				break;
 			case SDLK_DOWN:
+				if(gui_Joy == 0){
 				CPC_ClearKey(CPC_KEY_JOY_DOWN);
+				}
+				else {
+					CPC_ClearKey(CPC_JOY1_DOWN);
+				}
 				break;
 			case SDLK_LEFT:
+				if(gui_Joy == 0){
 				CPC_ClearKey(CPC_KEY_JOY_LEFT);
+				}
+				else {
+					CPC_ClearKey(CPC_JOY1_LEFT);
+				}
 				break;
 			case SDLK_RIGHT:
+				if(gui_Joy == 0){
 				CPC_ClearKey(CPC_KEY_JOY_RIGHT);
+				}
+				else {
+					CPC_ClearKey(CPC_JOY1_RIGHT);
+				}
 				break;
 			case SDLK_RETURN:
 				CPC_ClearKey(CPC_KEY_P);
@@ -749,7 +834,7 @@ BOOL sdl_ProcessSystemEvents() {
 					}
 					SDL_PauseAudio(0);
 				} else {
-					return TRUE;
+					menu_MainShow(&gui_MainMenu);
 				}
 				break;
 			default:
