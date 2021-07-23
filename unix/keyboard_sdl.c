@@ -223,7 +223,10 @@ static const char *zoom_Values[4] = { "Normal", "Zoom" };
 
 void menu_Exit()
 {
+	SDL_FillRect(sdl_screen, NULL, 0x000000);
+	SDL_FillRect(scaled_screen, NULL, 0x000000);
 	SDL_FillRect(screen, NULL, 0x000000);
+	SDL_Flip(screen);
 	SDL_Quit();
 }
 
@@ -296,7 +299,7 @@ MENUITEM gui_MainMenuItems[] = {
 	{(const char *)"Exit", 0, 0, 0, &menu_Exit}
 };
 
-MENU gui_MainMenu = { 5, 0, (MENUITEM *)&gui_MainMenuItems };
+MENU gui_MainMenu = { 6, 0, (MENUITEM *)&gui_MainMenuItems };
 
 #define color16(red, green, blue) ((red << 11) | (green << 5) | blue)
 
@@ -806,7 +809,7 @@ BOOL sdl_ProcessSystemEvents() {
 							screen, kMenuEventKeyDown);
 
 					if (status == kStatusExitGame) {
-						SDL_FillRect(screen, NULL, 0x000000);
+						menu_Exit();
 						return TRUE;
 					} else if (status == kStatusOpenMenu) {
 						menu_MainShow(&gui_MainMenu);
