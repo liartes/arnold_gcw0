@@ -23,6 +23,9 @@
 #include "host.h"
 #include "z80/z80.h"
 #include "fdd.h"
+#include <dlfcn.h>
+#include <mmenu.h>
+#include "../unix/ifacegen.h"
 
 #ifndef CPC_NODEBUGGER
 #include "debugger/gdebug.h"
@@ -52,6 +55,13 @@ static int NopCountToDate = NOPS_PER_MONITOR_SCREEN;
 static BOOL AudioActiveFlag = FALSE;
 /* TRUE if debugger is enabled, FALSE otherwise */
 static BOOL DebuggerIsActive = FALSE;
+
+
+extern void* mmenu;
+static int resume_slot = -2;
+extern char* rom_path;
+char save_path[512];
+const static char SAVE_DIRECTORY[] = "/mnt/SDCARD/Roms/GX4000/.gx4000/saves/";
 
 #if 0
 void	CPC_DoFrameFunc(void)
@@ -306,6 +316,33 @@ void	CPCEmulation_Run(void)
 
 	while (!doBreak)
 	{
+
+		//libmmenu
+		if (mmenu == NULL) {
+			mmenu = dlopen("libmmenu.so", RTLD_LAZY);
+		}
+
+		if (mmenu && resume_slot == -2) {
+			ResumeSlot_t ResumeSlot = (ResumeSlot_t) dlsym(mmenu, "ResumeSlot");
+			if (ResumeSlot)
+				resume_slot = ResumeSlot();
+
+			if (resume_slot > -1) {
+				int8_t savename[512];
+				strcpy(savename, rom_path);
+				strcpy(strrchr(savename, '.'), ".%i.sna");
+				snprintf(save_path, 512, "%s%s", SAVE_DIRECTORY,
+						strrchr(savename, '/') + 1);
+
+				char filename[512];
+				snprintf(filename, 512, save_path, resume_slot);
+
+				GenericInterface_LoadSnapshot(filename);
+
+				resume_slot = -1;
+			}
+		}
+
 		int NopCount;
 		int LocalNopCountToDate;
 

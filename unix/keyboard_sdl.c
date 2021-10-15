@@ -792,8 +792,9 @@ BOOL sdl_ProcessSystemEvents() {
 		case SDL_KEYUP: {
 			switch (event.key.keysym.sym) {
 			case SDLK_ESCAPE:	// menu button on Trimui
-				mmenu = dlopen("libmmenu.so", RTLD_LAZY);
-
+				if(mmenu == NULL) {
+					mmenu = dlopen("libmmenu.so", RTLD_LAZY);
+				}
 				if (mmenu) {
 					ShowMenu_t ShowMenu = (ShowMenu_t) dlsym(mmenu, "ShowMenu");
 
