@@ -1,12 +1,22 @@
 -------------------------------------------
 -------- Arnold for Trimui Model S --------
 -------------------------------------------
-0. Requirements
+0. Disclaimer
+-------------------------------------------
+This emulator is NOT OFFICIALY SUPPORTED by
+MinUI. You may experience glitches, missing
+features compared to officialy bundled ones.
+Shauninman provide a library allowing people
+to make third party content, and he is not
+responsible of other people usage of his work
+or providing support for these third party .pak.
+-------------------------------------------
+1. Requirements
 -------------------------------------------
 Upgraded firmware to 0.105
 MinUI as launcher
 -------------------------------------------
-1. Install
+2. Install
 -------------------------------------------
 Copy the content of the release ZIP on
 your Trimui SD card.
@@ -22,13 +32,13 @@ GX4000 emulator shows up in MinUI.
 Emulator snapshots are stored in the folder :
 Roms/GX4000/.GX4000/saves
 -------------------------------------------
-2. Update
+3. Update
 -------------------------------------------
 Copy the content of the release ZIP on
 your Trimui SD card, Depending of your system,
 Say yes to "replace all" or "Merge folders"
 -------------------------------------------
-3. Uninstall
+4. Uninstall
 -------------------------------------------
 Remove folders :
 Emus/GX4000.pak

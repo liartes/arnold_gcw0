@@ -23,11 +23,13 @@
 #include "sound.h"
 #include <string.h>
 #include <stdlib.h>
+
 #include "../cpc/messages.h"
 
 //#define USE_ASM 1
 #define AVERAGE(z, x) ((((z) & 0xF7DEF7DE) >> 1) + (((x) & 0xF7DEF7DE) >> 1))
 
+#define AUDIO_WATERMARK 4096	/* FIXME */
 
 SDL_Rect normal_surface = { 0, 0, 320, 240 };
 SDL_Rect zoom1_surface = { 33, 24, 256, 192 };
@@ -37,6 +39,8 @@ SDL_Surface *scaled_screen;
 static SDL_Surface *screen;
 static SDL_Surface *sdl_screen;
 extern SDL_Surface *menuSurface;
+
+extern long audio_waterlevel;
 
 extern int gui_Zoom;
 BOOL fullscreen = FALSE;	//FIXME
@@ -622,7 +626,7 @@ void sdl_SwapGraphicsBuffers(void) {
 	//SDL_UpdateRects(screen,1,&screen->clip_rect);
 	//SDL_SoftStretch(scaled_screen, NULL, screen, NULL);
 	if(gui_Zoom == 0) {
-		remove_scanlines(sdl_screen, 1);
+		//remove_scanlines(sdl_screen, 1);
 		SDL_BlitSurface(sdl_screen, NULL, screen, NULL);
 	}
 	else if(gui_Zoom == 1) {
@@ -736,7 +740,6 @@ void upscale_256xXXX_to_320x240(uint32_t* restrict dst, uint32_t* restrict src, 
  * I left in the SDL in case someone wants to try.
  * FIXME: Maybe we can get rid of floating point here?
  */
-#if 0
 #ifndef BUSYWAIT
 double delta_time()
 {
@@ -755,7 +758,6 @@ unsigned long timeGetTime() {
 	return (t1.tv_sec<<6|t1.tv_usec);
 }
 #endif
-#endif
 
 #define FRAMES_PER_SEC 50
 int sdl_LockSpeed = TRUE;
@@ -771,18 +773,19 @@ void sdl_Throttle(void) {
 		toggleFullscreenLater = FALSE;
 		sdl_toggleDisplayFullscreen();
 	}
+
 	if (sdl_LockSpeed)
 	{
 			/* Wait for the next frame */
-			Uint32 this_tick = SDL_GetTicks();
-			if ( this_tick < next_tick ) {
-				SDL_Delay(next_tick-this_tick);
-				next_tick = next_tick + (1000/FRAMES_PER_SEC);
-			} else {
-				next_tick = this_tick + (1000/FRAMES_PER_SEC);
-			}
+			//Uint32 this_tick = SDL_GetTicks();
+			//if ( this_tick < next_tick ) {
+			//	SDL_Delay(next_tick-this_tick);
+			//	next_tick = next_tick + (1000/FRAMES_PER_SEC);
+			//} else {
+			//	next_tick = this_tick + (1000/FRAMES_PER_SEC);
+			//}
 		//fprintf(stdout,"(%i %i) ",this_tick,next_tick);
-#if 0
+
 #ifndef BUSYWAIT
 		long delay;
 		delay = 10000/FRAMES_PER_SEC - delta_time();
@@ -805,8 +808,6 @@ void sdl_Throttle(void) {
 		TimeError = (TimeDifference - (1000/50)) % (1000/50);
 
 		PreviousTime = Time;
-
-#endif
 #endif
 
 	}

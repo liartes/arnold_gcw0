@@ -704,7 +704,6 @@ int     AudioEvent_TraverseAudioEventsAndBuildSampleData(int CPCNopCount, int No
 {
         int i;
 /*        int EventBufferNopEnd; */
-        int BufferFullness;
         
         {
         AUDIO_EVENT *pCurrentEvent = (AUDIO_EVENT *)pEventBuffer;
@@ -823,19 +822,12 @@ int     AudioEvent_TraverseAudioEventsAndBuildSampleData(int CPCNopCount, int No
 				pAudioPtr = (char *)AudioEvent_UpdateCycle(pAudioPtr);
             
 				NopCount.FixedPoint.L += NopsPerSampleScaled.FixedPoint.L;
-				BufferFullness = pAudioPtr - pAudioBuffer2;
 			}
 		}
 
 }
 
 		AudioEvent_PreviousFraction = NopCount.FixedPoint.L & 0x0ffff;
-
-		// buffer is not filled enough, return current position for next cycle
-		// 3528
-		/*if(BufferFullness < 3528) {
-			return BufferFullness;
-		}*/
 
 		switch (AudioEvent_SampleBits)
 		{

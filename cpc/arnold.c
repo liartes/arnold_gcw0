@@ -314,34 +314,34 @@ void	CPCEmulation_Run(void)
 {
 	BOOL doBreak = FALSE;
 
+	//libmmenu
+	if (mmenu == NULL) {
+		mmenu = dlopen("libmmenu.so", RTLD_LAZY);
+	}
+
+	if (mmenu && resume_slot == -2) {
+		ResumeSlot_t ResumeSlot = (ResumeSlot_t) dlsym(mmenu, "ResumeSlot");
+		if (ResumeSlot)
+			resume_slot = ResumeSlot();
+
+		if (resume_slot > -1) {
+			int8_t savename[512];
+			strcpy(savename, rom_path);
+			strcpy(strrchr(savename, '.'), ".%i.sna");
+			snprintf(save_path, 512, "%s%s", SAVE_DIRECTORY,
+					strrchr(savename, '/') + 1);
+
+			char filename[512];
+			snprintf(filename, 512, save_path, resume_slot);
+
+			GenericInterface_LoadSnapshot(filename);
+
+			resume_slot = -1;
+		}
+	}
+
 	while (!doBreak)
 	{
-
-		//libmmenu
-		if (mmenu == NULL) {
-			mmenu = dlopen("libmmenu.so", RTLD_LAZY);
-		}
-
-		if (mmenu && resume_slot == -2) {
-			ResumeSlot_t ResumeSlot = (ResumeSlot_t) dlsym(mmenu, "ResumeSlot");
-			if (ResumeSlot)
-				resume_slot = ResumeSlot();
-
-			if (resume_slot > -1) {
-				int8_t savename[512];
-				strcpy(savename, rom_path);
-				strcpy(strrchr(savename, '.'), ".%i.sna");
-				snprintf(save_path, 512, "%s%s", SAVE_DIRECTORY,
-						strrchr(savename, '/') + 1);
-
-				char filename[512];
-				snprintf(filename, 512, save_path, resume_slot);
-
-				GenericInterface_LoadSnapshot(filename);
-
-				resume_slot = -1;
-			}
-		}
 
 		int NopCount;
 		int LocalNopCountToDate;

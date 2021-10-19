@@ -120,7 +120,7 @@ void	sdl_fill_audio(void *userdata, Uint8 *stream, int len) {
 	//fprintf(stderr,".%x",len);
 	//fprintf(stderr,".%x:%x:%x",(debugcounter+=len),len,
 		//audio_pos-audio_chunk);
-	//audio_waterlevel -= len;	// FIXME
+	audio_waterlevel -= len;	// FIXME
 	if ( audio_pos + len < audio_chunk + audio_bufsize ) {
 		//memcpy(stream, audio_pos, len);
 		//halfcpy(stream, audio_pos, len);
@@ -201,7 +201,7 @@ AudioBufferSize)
 		*pBlock2Size = AudioBufferSize - remain;
 		audio_rec = audio_chunk + *pBlock2Size;
 	}
-	//audio_waterlevel += AudioBufferSize;		// FIXME
+	audio_waterlevel += AudioBufferSize;		// FIXME
 	//usleep(10);
 	return TRUE;
 }
